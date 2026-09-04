@@ -1,0 +1,63 @@
+name: JARVIS Windows EXE
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Kaynak kodunu al
+        uses: actions/checkout@v4
+
+      - name: Python 3.12 kur
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: requirements.txt
+
+      - name: Bağımlılıkları kur
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: JARVIS.exe oluştur
+        shell: pwsh
+        run: |
+          Remove-Item -Recurse -Force build, dist -ErrorAction SilentlyContinue
+          pyinstaller --clean --noconfirm JARVIS.spec
+          if (!(Test-Path dist/JARVIS.exe)) { throw 'JARVIS.exe oluşturulamadı.' }
+
+      - name: SHA-256 oluştur
+        shell: pwsh
+        working-directory: dist
+        run: |
+          (Get-FileHash JARVIS.exe -Algorithm SHA256).Hash.ToLower() | Out-File -Encoding ascii JARVIS.exe.sha256
+
+      - name: Release oluştur ve EXE yükle
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        working-directory: dist
+        run: |
+          gh release create "$GITHUB_REF_NAME" JARVIS.exe JARVIS.exe.sha256 --generate-notes --title "JARVIS $GITHUB_REF_NAME"
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: EXE artifact yükle
+        uses: actions/upload-artifact@v4
+        with:
+          name: JARVIS-Windows-${{ github.ref_name }}
+          path: |
+            dist/JARVIS.exe
+            dist/JARVIS.exe.sha256
+          if-no-files-found: error
