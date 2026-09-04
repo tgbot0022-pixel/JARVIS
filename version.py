@@ -1,5 +1,5 @@
 APP_NAME = "JARVIS"
-APP_VERSION = "2.0.0"
+APP_VERSION = "2.0.1"
 GITHUB_OWNER = "tgbot0022-pixel"
 GITHUB_REPO = "JARVIS"
 GITHUB_API = f"https://api.github.com/repos/{GITHUB_OWNER}/{GITHUB_REPO}/releases/latest"
