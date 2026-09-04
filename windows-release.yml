@@ -22,35 +22,39 @@ jobs:
         with:
           python-version: '3.12'
           cache: 'pip'
-          cache-dependency-path: jfix/requirements.txt
+          cache-dependency-path: requirements.txt
 
       - name: Bağımlılıkları kur
         shell: pwsh
         run: |
           python -m pip install --upgrade pip
-          pip install -r jfix/requirements.txt
-          pip install pyinstaller
+          python -m pip install -r requirements.txt
+          python -m pip install pyinstaller
+          python -c "import pyaudio; print('PyAudio OK:', pyaudio.__file__)"
 
       - name: JARVIS.exe oluştur
         shell: pwsh
-        working-directory: jfix
         run: |
           Remove-Item -Recurse -Force build, dist -ErrorAction SilentlyContinue
-          pyinstaller --clean --noconfirm JARVIS.spec
-          if (!(Test-Path dist/JARVIS.exe)) { throw 'JARVIS.exe oluşturulamadı.' }
+          python -m PyInstaller --clean --noconfirm JARVIS.spec
+
+          if (!(Test-Path dist/JARVIS.exe)) {
+            throw 'JARVIS.exe oluşturulamadı.'
+          }
 
       - name: SHA-256 oluştur
         shell: pwsh
-        working-directory: jfix/dist
+        working-directory: dist
         run: |
           (Get-FileHash JARVIS.exe -Algorithm SHA256).Hash.ToLower() | Out-File -Encoding ascii JARVIS.exe.sha256
 
       - name: Release oluştur ve EXE yükle
         if: startsWith(github.ref, 'refs/tags/')
         shell: bash
-        working-directory: jfix/dist
+        working-directory: dist
         run: |
-          gh release create "$GITHUB_REF_NAME" JARVIS.exe JARVIS.exe.sha256 --generate-notes --title "JARVIS $GITHUB_REF_NAME"
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --generate-notes --title "JARVIS $GITHUB_REF_NAME"
+          gh release upload "$GITHUB_REF_NAME" JARVIS.exe JARVIS.exe.sha256 --clobber
         env:
           GH_TOKEN: ${{ github.token }}
 
@@ -59,6 +63,6 @@ jobs:
         with:
           name: JARVIS-Windows-${{ github.ref_name }}
           path: |
-            jfix/dist/JARVIS.exe
-            jfix/dist/JARVIS.exe.sha256
+            dist/JARVIS.exe
+            dist/JARVIS.exe.sha256
           if-no-files-found: error

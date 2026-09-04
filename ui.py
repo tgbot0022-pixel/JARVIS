@@ -4,6 +4,8 @@ Concentric teal rings · Segmented arcs
 """
 
 import os, time, math, random, threading
+import json
+from urllib.request import Request, urlopen
 import tkinter as tk
 from collections import deque
 from pathlib import Path
@@ -14,6 +16,30 @@ from app_config import has_gemini_api_key, load_app_config, save_app_config
 from actions.weather import get_weather_summary
 
 BASE_DIR = Path(__file__).resolve().parent
+
+
+def _detect_current_city() -> str:
+    """Bilgisayarın açılış anındaki yaklaşık konumundan şehir adını bulur.
+
+    Windows konum izni gerektirmeden, aktif internet bağlantısının IP konumunu
+    kullanır. Bir servis erişilemezse diğerine geçer. Sonuç bulunamazsa boş
+    döner; hava durumu kartı bu durumda güvenli şekilde hata mesajı gösterir.
+    """
+    services = (
+        ("https://ipapi.co/json/", lambda d: d.get("city")),
+        ("https://ipwho.is/", lambda d: d.get("city") if d.get("success", True) else None),
+    )
+    for url, extractor in services:
+        try:
+            req = Request(url, headers={"User-Agent": "JARVIS-Weather/1.0"})
+            with urlopen(req, timeout=4) as response:
+                data = json.loads(response.read().decode("utf-8"))
+            city = extractor(data)
+            if city and str(city).strip():
+                return str(city).strip()
+        except Exception:
+            pass
+    return ""
 
 SYSTEM_NAME = "J.A.R.V.I.S"
 MODEL_BADGE = "VOICE CORE · WINDOWS"
@@ -436,10 +462,11 @@ class JarvisUI:
         self._cam_orb_shift_target = 0.0   # hedef kayma
         self._cam_orb_face         = 0.0   # orb'un anlık face boyutu (0 → FACE kullan)
         self._cam_orb_face_target  = 0.0   # hedef face boyutu
+        self._weather_city = ""
         self._weather_card = {
-            "city": "Istanbul",
+            "city": "KONUM ARANIYOR",
             "primary": "--",
-            "details": ["Hava durumu yükleniyor..."],
+            "details": ["Konum belirleniyor..."],
         }
         self._panel_focus = ""
         self._panel_focus_until = 0.0
@@ -1735,13 +1762,13 @@ class JarvisUI:
     def _parse_weather_card(self, text: str) -> dict:
         if not text or "alınamadı" in text.lower() or "alınamadi" in text.lower():
             return {
-                "city": "Istanbul",
+                "city": self._weather_city or "KONUM BİLİNMİYOR",
                 "primary": "--",
                 "details": ["Hava durumu alınamadı."],
             }
 
         prefix, _, body = text.partition(":")
-        city = "Istanbul"
+        city = self._weather_city or "KONUM BİLİNMİYOR"
         if " için" in prefix:
             city = prefix.split(" için", 1)[0].strip().title()
 
@@ -1763,11 +1790,15 @@ class JarvisUI:
 
     def _refresh_brief_cards(self):
         try:
-            weather = get_weather_summary("Istanbul")
+            city = _detect_current_city()
+            if not city:
+                raise RuntimeError("Konum tespit edilemedi")
+            self._weather_city = city
+            weather = get_weather_summary(city)
             self._weather_card = self._parse_weather_card(weather)
         except Exception:
             self._weather_card = {
-                "city": "Istanbul",
+                "city": self._weather_city or "KONUM BİLİNMİYOR",
                 "primary": "--",
                 "details": ["Hava durumu alınamadı."],
             }

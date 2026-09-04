@@ -1,15 +1,30 @@
 # -*- mode: python ; coding: utf-8 -*-
 from pathlib import Path
-from PyInstaller.utils.hooks import collect_submodules
+from PyInstaller.utils.hooks import collect_dynamic_libs, collect_submodules
 
 ROOT = Path(SPEC).parent
 
-hiddenimports = []
-for pkg in ["google.genai", "pyaudio", "cv2", "PIL", "mss", "pyautogui", "psutil", "pycaw", "comtypes"]:
+# Do not rely only on automatic discovery. PyAudio contains a native PortAudio
+# extension and must be explicitly included in the frozen application.
+hiddenimports = [
+    "pyaudio",
+    "pyaudio._portaudio",
+]
+
+for pkg in ["google.genai", "cv2", "PIL", "mss", "pyautogui", "psutil", "pycaw", "comtypes"]:
     try:
         hiddenimports += collect_submodules(pkg)
     except Exception:
         pass
+
+# Remove duplicates while preserving order.
+hiddenimports = list(dict.fromkeys(hiddenimports))
+
+binaries = []
+try:
+    binaries += collect_dynamic_libs("pyaudio")
+except Exception:
+    pass
 
 datas = [
     (str(ROOT / "core"), "core"),
@@ -29,7 +44,7 @@ excludes = ["tkinter.test", "pytest", "IPython"]
 a = Analysis(
     [str(ROOT / "main.py")],
     pathex=[str(ROOT)],
-    binaries=[],
+    binaries=binaries,
     datas=datas,
     hiddenimports=hiddenimports,
     hookspath=[],

@@ -15,7 +15,7 @@ import requests
 
 
 def get_weather_summary(location: str | None = None) -> str:
-    target = (location or os.environ.get("JARVIS_WEATHER_LOCATION") or "Istanbul").strip()
+    target = (location or os.environ.get("JARVIS_WEATHER_LOCATION") or "Sivas").strip()
     try:
         response = requests.get(
             f"https://wttr.in/{target}",
@@ -47,3 +47,4 @@ def get_weather_summary(location: str | None = None) -> str:
         return f"{target} için hava durumu: " + ", ".join(parts) + "."
     except Exception:
         return "Hava durumu bilgisi şu anda alınamadı."
+
