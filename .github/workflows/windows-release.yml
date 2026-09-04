@@ -49,7 +49,9 @@ jobs:
         shell: bash
         working-directory: dist
         run: |
-          gh release create "$GITHUB_REF_NAME" JARVIS.exe JARVIS.exe.sha256 --generate-notes --title "JARVIS $GITHUB_REF_NAME"
+          gh run: |
+  gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --generate-notes --title "JARVIS $GITHUB_REF_NAME"
+  gh release upload "$GITHUB_REF_NAME" JARVIS.exe JARVIS.exe.sha256 --clobber
         env:
           GH_TOKEN: ${{ github.token }}
 
