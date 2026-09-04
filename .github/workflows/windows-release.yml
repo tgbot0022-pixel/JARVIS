@@ -36,7 +36,10 @@ jobs:
         run: |
           Remove-Item -Recurse -Force build, dist -ErrorAction SilentlyContinue
           pyinstaller --clean --noconfirm JARVIS.spec
-          if (!(Test-Path dist/JARVIS.exe)) { throw 'JARVIS.exe oluşturulamadı.' }
+
+          if (!(Test-Path dist/JARVIS.exe)) {
+            throw 'JARVIS.exe oluşturulamadı.'
+          }
 
       - name: SHA-256 oluştur
         shell: pwsh
@@ -49,9 +52,8 @@ jobs:
         shell: bash
         working-directory: dist
         run: |
-          gh run: |
-  gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --generate-notes --title "JARVIS $GITHUB_REF_NAME"
-  gh release upload "$GITHUB_REF_NAME" JARVIS.exe JARVIS.exe.sha256 --clobber
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --generate-notes --title "JARVIS $GITHUB_REF_NAME"
+          gh release upload "$GITHUB_REF_NAME" JARVIS.exe JARVIS.exe.sha256 --clobber
         env:
           GH_TOKEN: ${{ github.token }}
 
